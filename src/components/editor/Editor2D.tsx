@@ -85,30 +85,37 @@ if (newScale > 2000) newScale = 2000;
     stage.position(newPos);
   };
 
-  const lastCenter = useRef<{x: number, y: number} | null>(null);
-  const lastDist = useRef<number>(0);
-  const isPinching = useRef<boolean>(false);
+  // Continuous pinch zoom state
+  const pinchInfo = useRef<{
+    startDist: number;
+    startScale: number;
+    worldPoint: { x: number, y: number };
+  } | null>(null);
 
   const handleTouchStart = (e: any) => {
     const touches = e.evt.touches;
     
     if (touches.length === 2) {
-      isPinching.current = true;
       e.evt.preventDefault();
+      const stage = stageRef.current;
+      if (!stage) return;
+
+      const p1 = { x: touches[0].clientX, y: touches[0].clientY };
+      const p2 = { x: touches[1].clientX, y: touches[1].clientY };
+      const dist = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+      const center = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
       
-      const touch1 = touches[0];
-      const touch2 = touches[1];
-      
-      const p1 = { x: touch1.clientX, y: touch1.clientY };
-      const p2 = { x: touch2.clientX, y: touch2.clientY };
-      
-      lastDist.current = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-      lastCenter.current = { 
-        x: (p1.x + p2.x) / 2, 
-        y: (p1.y + p2.y) / 2 
+      // Store initial distance and scale to avoid jumpy updates
+      pinchInfo.current = {
+        startDist: dist,
+        startScale: stage.scaleX(),
+        worldPoint: {
+          x: (center.x - stage.x()) / stage.scaleX(),
+          y: (center.y - stage.y()) / stage.scaleX(),
+        }
       };
     } else if (touches.length === 1) {
-      isPinching.current = false;
+      pinchInfo.current = null;
       checkDeselect(e);
     }
   };
@@ -116,9 +123,8 @@ if (newScale > 2000) newScale = 2000;
   const handleTouchMove = (e: any) => {
     const touches = e.evt.touches;
     
-    if (touches.length === 2 && isPinching.current) {
+    if (touches.length === 2 && pinchInfo.current) {
       e.evt.preventDefault();
-      
       const stage = stageRef.current;
       if (!stage) return;
       
@@ -126,54 +132,32 @@ if (newScale > 2000) newScale = 2000;
         stage.stopDrag();
       }
       
-      const touch1 = touches[0];
-      const touch2 = touches[1];
-      
-      const p1 = { x: touch1.clientX, y: touch1.clientY };
-      const p2 = { x: touch2.clientX, y: touch2.clientY };
-      
+      const p1 = { x: touches[0].clientX, y: touches[0].clientY };
+      const p2 = { x: touches[1].clientX, y: touches[1].clientY };
       const currentDist = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-      const currentCenter = { 
-        x: (p1.x + p2.x) / 2, 
-        y: (p1.y + p2.y) / 2 
-      };
+      const currentCenter = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
       
-      if (!lastDist.current || !lastCenter.current) {
-        lastDist.current = currentDist;
-        lastCenter.current = currentCenter;
-        return;
-      }
+      const { startDist, startScale, worldPoint } = pinchInfo.current;
+
+      // CONTINUOUS scaling: compare current distance with START distance
+      let scale = startScale * (currentDist / startDist);
       
-      const pointTo = {
-  x: (currentCenter.x - stage.x()) / stage.scaleX(),
-  y: (currentCenter.y - stage.y()) / stage.scaleX(),
-};
+      // Limit zoom depth
+      scale = Math.max(0.01, Math.min(scale, 200));
 
-const scale = stage.scaleX() * (currentDist / lastDist.current);
-
-if (scale >= 0.05 && scale <= 2000) {
-  stage.scaleX(scale);
-  stage.scaleY(scale);
-
-  const newPos = {
-    x: currentCenter.x - pointTo.x * scale,
-    y: currentCenter.y - pointTo.y * scale,
-  };
-
-  stage.position(newPos);
-  stage.batchDraw();
-}
-
-lastDist.current = currentDist;
-lastCenter.current = currentCenter;
+      stage.scale({ x: scale, y: scale });
+      stage.position({
+        x: currentCenter.x - worldPoint.x * scale,
+        y: currentCenter.y - worldPoint.y * scale,
+      });
+      
+      stage.batchDraw();
     }
   };
 
   const handleTouchEnd = (e: any) => {
     if (e.evt.touches.length < 2) {
-      isPinching.current = false;
-      lastCenter.current = null;
-      lastDist.current = 0;
+      pinchInfo.current = null;
     }
   };
 
