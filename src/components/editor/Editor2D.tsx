@@ -250,7 +250,7 @@ if (newScale > 2000) newScale = 2000;
         onWheel={handleWheel}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        draggable={!isPinching.current}
+        draggable={!pinchInfo.current}
         ref={stageRef}
       >
         <Layer>
