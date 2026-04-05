@@ -1,1 +1,10 @@
 @import "tailwindcss";
+
+canvas {
+  touch-action: none !important;
+}
+
+.touch-none {
+  touch-action: none;
+  overscroll-behavior: none;
+}
