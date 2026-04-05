@@ -144,20 +144,28 @@ if (newScale > 2000) newScale = 2000;
         return;
       }
       
-      if (scale >= 0.05 && scale <= 2000) {
-        stage.scaleX(scale);
-        stage.scaleY(scale);
+      const pointTo = {
+  x: (currentCenter.x - stage.x()) / stage.scaleX(),
+  y: (currentCenter.y - stage.y()) / stage.scaleX(),
+};
 
-        const newPos = {
-          x: newCenter.x - pointTo.x * scale,
-          y: newCenter.y - pointTo.y * scale,
-        };
+const scale = stage.scaleX() * (currentDist / lastDist.current);
 
-        stage.position(newPos);
-      }
+if (scale >= 0.05 && scale <= 2000) {
+  stage.scaleX(scale);
+  stage.scaleY(scale);
 
-      lastDist.current = dist;
-      lastCenter.current = newCenter;
+  const newPos = {
+    x: currentCenter.x - pointTo.x * scale,
+    y: currentCenter.y - pointTo.y * scale,
+  };
+
+  stage.position(newPos);
+  stage.batchDraw();
+}
+
+lastDist.current = currentDist;
+lastCenter.current = currentCenter;
     }
   };
 
