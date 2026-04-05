@@ -73,8 +73,8 @@ export function Editor2D() {
     let newScale = oldScale * factor;
     
     // Limit zoom
-    if (newScale < 0.05) newScale = 0.05;
-    if (newScale > 20) newScale = 20;
+if (newScale < 0.05) newScale = 0.05;
+if (newScale > 2000) newScale = 2000;
 
     stage.scale({ x: newScale, y: newScale });
 
@@ -135,7 +135,7 @@ export function Editor2D() {
 
       const scale = stage.scaleX() * (dist / lastDist.current);
       
-      if (scale >= 0.05 && scale <= 20) {
+      if (scale >= 0.05 && scale <= 2000) {
         stage.scaleX(scale);
         stage.scaleY(scale);
 
