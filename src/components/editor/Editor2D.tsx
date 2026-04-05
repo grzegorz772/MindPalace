@@ -116,16 +116,13 @@ export function Editor2D() {
 
       const scale = stage.scaleX() * (dist / lastDist.current);
       
-      if (scale >= 0.1 && scale <= 5) {
+      if (scale >= 0.1 && scale <= 10) {
         stage.scaleX(scale);
         stage.scaleY(scale);
 
-        const dx = newCenter.x - lastCenter.current.x;
-        const dy = newCenter.y - lastCenter.current.y;
-
         const newPos = {
-          x: newCenter.x - pointTo.x * scale + dx,
-          y: newCenter.y - pointTo.y * scale + dy,
+          x: newCenter.x - pointTo.x * scale,
+          y: newCenter.y - pointTo.y * scale,
         };
 
         stage.position(newPos);

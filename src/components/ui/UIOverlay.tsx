@@ -9,7 +9,7 @@ export function UIOverlay() {
   const { mode, setMode, isNight, toggleNight } = usePalaceStore() as any;
 
   return (
-    <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-2 sm:p-6 z-10">
+    <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-2 sm:p-6 pb-8 sm:pb-6 z-10">
       {/* Top Bar */}
       <div className="flex justify-between items-start pointer-events-auto gap-2">
         <div className="backdrop-blur-md bg-white/5 border border-white/10 rounded-3xl p-1.5 sm:p-2 shadow-2xl flex gap-1 sm:gap-2">
