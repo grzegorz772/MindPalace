@@ -54,22 +54,27 @@ export function Editor2D() {
 
   const handleWheel = (e: any) => {
     e.evt.preventDefault();
-    const scaleBy = 1.1;
     const stage = stageRef.current;
     if (!stage) return;
     
     const oldScale = stage.scaleX();
     const pointer = stage.getPointerPosition();
 
+    if (!pointer) return;
+
     const mousePointTo = {
       x: (pointer.x - stage.x()) / oldScale,
       y: (pointer.y - stage.y()) / oldScale,
     };
 
-    const newScale = e.evt.deltaY > 0 ? oldScale / scaleBy : oldScale * scaleBy;
+    // Responsive zoom based on delta magnitude (better for touchpads and mobile emulation)
+    const zoomSpeed = 0.001;
+    const factor = Math.exp(-e.evt.deltaY * zoomSpeed);
+    let newScale = oldScale * factor;
     
     // Limit zoom
-    if (newScale < 0.1 || newScale > 5) return;
+    if (newScale < 0.05) newScale = 0.05;
+    if (newScale > 20) newScale = 20;
 
     stage.scale({ x: newScale, y: newScale });
 
@@ -83,6 +88,20 @@ export function Editor2D() {
   // Touch zoom state
   const lastCenter = useRef<{x: number, y: number} | null>(null);
   const lastDist = useRef<number>(0);
+
+  const handleTouchStart = (e: any) => {
+    checkDeselect(e);
+    
+    const touch1 = e.evt.touches[0];
+    const touch2 = e.evt.touches[1];
+
+    if (touch1 && touch2) {
+      const p1 = { x: touch1.clientX, y: touch1.clientY };
+      const p2 = { x: touch2.clientX, y: touch2.clientY };
+      lastDist.current = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+      lastCenter.current = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+    }
+  };
 
   const handleTouchMove = (e: any) => {
     const touch1 = e.evt.touches[0];
@@ -101,14 +120,14 @@ export function Editor2D() {
       const p2 = { x: touch2.clientX, y: touch2.clientY };
 
       const dist = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+      const newCenter = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
 
-      if (!lastCenter.current) {
-        lastCenter.current = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+      if (!lastDist.current || !lastCenter.current) {
         lastDist.current = dist;
+        lastCenter.current = newCenter;
         return;
       }
 
-      const newCenter = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
       const pointTo = {
         x: (newCenter.x - stage.x()) / stage.scaleX(),
         y: (newCenter.y - stage.y()) / stage.scaleX(),
@@ -116,7 +135,7 @@ export function Editor2D() {
 
       const scale = stage.scaleX() * (dist / lastDist.current);
       
-      if (scale >= 0.1 && scale <= 10) {
+      if (scale >= 0.05 && scale <= 20) {
         stage.scaleX(scale);
         stage.scaleY(scale);
 
@@ -223,7 +242,7 @@ export function Editor2D() {
         width={dimensions.width} 
         height={dimensions.height}
         onMouseDown={checkDeselect}
-        onTouchStart={checkDeselect}
+        onTouchStart={handleTouchStart}
         onWheel={handleWheel}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
