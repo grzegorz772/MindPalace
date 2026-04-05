@@ -46,9 +46,6 @@ export function Editor2D() {
   const activeItems = placedItems.filter(i => i.floorId === activeFloorId);
 
   const checkDeselect = (e: any) => {
-    // Ignore multi-touch events to prevent conflict with pinch-to-zoom
-    if (e.evt && e.evt.touches && e.evt.touches.length > 1) return;
-
     const clickedOnEmpty = e.target === e.target.getStage() || e.target.name() === 'grid-bg';
     if (clickedOnEmpty) {
       selectItem(null);
@@ -104,31 +101,34 @@ export function Editor2D() {
       const p2 = { x: touch2.clientX, y: touch2.clientY };
 
       const dist = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-      const newCenter = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
 
-      if (lastDist.current > 0) {
-        const oldScale = stage.scaleX();
-        const pointer = stage.getPointerPosition();
-        
-        // Calculate point to zoom towards
-        const mousePointTo = {
-          x: (newCenter.x - stage.x()) / oldScale,
-          y: (newCenter.y - stage.y()) / oldScale,
+      if (!lastCenter.current) {
+        lastCenter.current = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+        lastDist.current = dist;
+        return;
+      }
+
+      const newCenter = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+      const pointTo = {
+        x: (newCenter.x - stage.x()) / stage.scaleX(),
+        y: (newCenter.y - stage.y()) / stage.scaleX(),
+      };
+
+      const scale = stage.scaleX() * (dist / lastDist.current);
+      
+      if (scale >= 0.1 && scale <= 5) {
+        stage.scaleX(scale);
+        stage.scaleY(scale);
+
+        const dx = newCenter.x - lastCenter.current.x;
+        const dy = newCenter.y - lastCenter.current.y;
+
+        const newPos = {
+          x: newCenter.x - pointTo.x * scale + dx,
+          y: newCenter.y - pointTo.y * scale + dy,
         };
 
-        const scale = oldScale * (dist / lastDist.current);
-        
-        if (scale >= 0.1 && scale <= 5) {
-          stage.scale({ x: scale, y: scale });
-
-          const newPos = {
-            x: newCenter.x - mousePointTo.x * scale,
-            y: newCenter.y - mousePointTo.y * scale,
-          };
-
-          stage.position(newPos);
-          stage.batchDraw();
-        }
+        stage.position(newPos);
       }
 
       lastDist.current = dist;
@@ -136,9 +136,9 @@ export function Editor2D() {
     }
   };
 
-  const handleTouchEnd = (e: any) => {
-    lastDist.current = 0;
+  const handleTouchEnd = () => {
     lastCenter.current = null;
+    lastDist.current = 0;
   };
 
   const [dragPreview, setDragPreview] = useState<{ x: number, y: number, defId: string } | null>(null);
@@ -225,16 +225,11 @@ export function Editor2D() {
       <Stage 
         width={dimensions.width} 
         height={dimensions.height}
-        onClick={checkDeselect}
-        onTouchEnd={(e) => {
-          // Only deselect if it's a single touch and we're not zooming
-          if (e.evt.changedTouches && e.evt.changedTouches.length === 1 && lastDist.current === 0) {
-            checkDeselect(e);
-          }
-          handleTouchEnd(e);
-        }}
+        onMouseDown={checkDeselect}
+        onTouchStart={checkDeselect}
         onWheel={handleWheel}
         onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         draggable
         ref={stageRef}
       >
@@ -274,7 +269,25 @@ export function Editor2D() {
           ))}
 
           {/* Items */}
-          {activeItems.map(item => {
+          {activeItems
+            .slice()
+            .sort((a, b) => {
+              // Selected item is always on top
+              if (a.id === selectedItemId) return 1;
+              if (b.id === selectedItemId) return -1;
+              
+              const defA = itemDefinitions.find(d => d.id === a.definitionId);
+              const defB = itemDefinitions.find(d => d.id === b.definitionId);
+              
+              // Walls and Rooms at the bottom
+              const isBottomA = defA?.categoryId === 'cat-walls' || defA?.name.toLowerCase() === 'room' ? -1 : 1;
+              const isBottomB = defB?.categoryId === 'cat-walls' || defB?.name.toLowerCase() === 'room' ? -1 : 1;
+              
+              if (isBottomA !== isBottomB) return isBottomA - isBottomB;
+              
+              return 0; // Keep other items in their relative order
+            })
+            .map(item => {
             const def = itemDefinitions.find(d => d.id === item.definitionId);
             if (!def) return null;
             return (
@@ -336,23 +349,11 @@ function PlacedItemNode({ item, def, isSelected, onSelect, onChange }: any) {
           e.cancelBubble = true;
           onSelect();
         }}
-        onTouchStart={(e) => {
-          e.cancelBubble = true;
-          onSelect();
-        }}
         onTouchEnd={(e) => {
           e.cancelBubble = true;
           onSelect();
         }}
-        onDragMove={(e) => {
-          const GRID_SNAP = 50;
-          const x = Math.round(e.target.x() / GRID_SNAP) * GRID_SNAP;
-          const y = Math.round(e.target.y() / GRID_SNAP) * GRID_SNAP;
-          e.target.x(x);
-          e.target.y(y);
-        }}
         onDragEnd={(e) => {
-          // Snapping to 50 units as requested
           const GRID_SNAP = 50;
           const x = Math.round(e.target.x() / GRID_SNAP) * GRID_SNAP;
           const y = Math.round(e.target.y() / GRID_SNAP) * GRID_SNAP;
@@ -402,7 +403,6 @@ function PlacedItemNode({ item, def, isSelected, onSelect, onChange }: any) {
             stroke={isSelected ? "#3b82f6" : (item.color || "#4b5563")}
             strokeWidth={10}
             cornerRadius={0}
-            hitStrokeWidth={20}
           />
         ) : image ? (
           <KonvaImage
