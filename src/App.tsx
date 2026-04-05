@@ -13,7 +13,7 @@ export default function App() {
   const mode = usePalaceStore((state) => state.mode);
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-gray-900 text-white font-sans">
+    <div className="relative w-full h-[100dvh] overflow-hidden bg-gray-900 text-white font-sans">
       {/* Main Canvas Area */}
       {mode === '2D' ? <Editor2D /> : <Explorer3D />}
 

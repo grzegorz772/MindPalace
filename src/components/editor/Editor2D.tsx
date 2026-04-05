@@ -85,55 +85,64 @@ if (newScale > 2000) newScale = 2000;
     stage.position(newPos);
   };
 
-  // Touch zoom state
   const lastCenter = useRef<{x: number, y: number} | null>(null);
   const lastDist = useRef<number>(0);
+  const isPinching = useRef<boolean>(false);
 
   const handleTouchStart = (e: any) => {
-    checkDeselect(e);
+    const touches = e.evt.touches;
     
-    const touch1 = e.evt.touches[0];
-    const touch2 = e.evt.touches[1];
-
-    if (touch1 && touch2) {
+    if (touches.length === 2) {
+      isPinching.current = true;
+      e.evt.preventDefault();
+      
+      const touch1 = touches[0];
+      const touch2 = touches[1];
+      
       const p1 = { x: touch1.clientX, y: touch1.clientY };
       const p2 = { x: touch2.clientX, y: touch2.clientY };
+      
       lastDist.current = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-      lastCenter.current = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+      lastCenter.current = { 
+        x: (p1.x + p2.x) / 2, 
+        y: (p1.y + p2.y) / 2 
+      };
+    } else if (touches.length === 1) {
+      isPinching.current = false;
+      checkDeselect(e);
     }
   };
 
   const handleTouchMove = (e: any) => {
-    const touch1 = e.evt.touches[0];
-    const touch2 = e.evt.touches[1];
-
-    if (touch1 && touch2) {
+    const touches = e.evt.touches;
+    
+    if (touches.length === 2 && isPinching.current) {
       e.evt.preventDefault();
+      
       const stage = stageRef.current;
       if (!stage) return;
-
+      
       if (stage.isDragging()) {
         stage.stopDrag();
       }
-
+      
+      const touch1 = touches[0];
+      const touch2 = touches[1];
+      
       const p1 = { x: touch1.clientX, y: touch1.clientY };
       const p2 = { x: touch2.clientX, y: touch2.clientY };
-
-      const dist = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-      const newCenter = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
-
+      
+      const currentDist = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+      const currentCenter = { 
+        x: (p1.x + p2.x) / 2, 
+        y: (p1.y + p2.y) / 2 
+      };
+      
       if (!lastDist.current || !lastCenter.current) {
-        lastDist.current = dist;
-        lastCenter.current = newCenter;
+        lastDist.current = currentDist;
+        lastCenter.current = currentCenter;
         return;
       }
-
-      const pointTo = {
-        x: (newCenter.x - stage.x()) / stage.scaleX(),
-        y: (newCenter.y - stage.y()) / stage.scaleX(),
-      };
-
-      const scale = stage.scaleX() * (dist / lastDist.current);
       
       if (scale >= 0.05 && scale <= 2000) {
         stage.scaleX(scale);
@@ -152,9 +161,12 @@ if (newScale > 2000) newScale = 2000;
     }
   };
 
-  const handleTouchEnd = () => {
-    lastCenter.current = null;
-    lastDist.current = 0;
+  const handleTouchEnd = (e: any) => {
+    if (e.evt.touches.length < 2) {
+      isPinching.current = false;
+      lastCenter.current = null;
+      lastDist.current = 0;
+    }
   };
 
   const [dragPreview, setDragPreview] = useState<{ x: number, y: number, defId: string } | null>(null);
@@ -246,7 +258,7 @@ if (newScale > 2000) newScale = 2000;
         onWheel={handleWheel}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        draggable
+        draggable={!isPinching.current}
         ref={stageRef}
       >
         <Layer>
