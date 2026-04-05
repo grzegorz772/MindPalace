@@ -15,37 +15,14 @@ export function Toolbar() {
 
   const handleReset = async () => {
     if (window.confirm('Are you sure you want to reset everything? This will delete all your rooms, items, and imported models.')) {
-      // Clear all storage
       localStorage.clear();
-      sessionStorage.clear();
-      
-      // Clear IndexedDB
-      try {
-        await clear();
-        // Also try to delete common databases just in case
-        const dbs = await window.indexedDB.databases();
-        for (const db of dbs) {
-          if (db.name) window.indexedDB.deleteDatabase(db.name);
-        }
-      } catch (e) {
-        console.error('Failed to clear IndexedDB:', e);
-      }
-
-      // Clear cookies
-      const cookies = document.cookie.split(";");
-      for (let i = 0; i < cookies.length; i++) {
-        const cookie = cookies[i];
-        const eqPos = cookie.indexOf("=");
-        const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
-        document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
-      }
-
+      await clear();
       window.location.reload();
     }
   };
 
   return (
-    <div className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-[2rem] p-2 sm:p-3 shadow-2xl flex flex-col gap-2 sm:gap-3 pointer-events-auto">
+    <div className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-[2rem] p-2 sm:p-3 shadow-2xl flex flex-row sm:flex-col gap-2 sm:gap-3 pointer-events-auto">
       <button 
         className="p-3 sm:p-4 rounded-2xl hover:bg-white/10 text-white/50 hover:text-white transition-all"
         title="Center View"
@@ -66,7 +43,7 @@ export function Toolbar() {
       
       {selectedItemId && (
         <>
-          <div className="w-full h-px bg-white/10 my-1" />
+          <div className="w-px h-full sm:w-full sm:h-px bg-white/10 mx-1 sm:my-1" />
           <button 
             className="p-3 sm:p-4 rounded-2xl hover:bg-white/10 text-white/50 hover:text-white transition-all"
             title="Rotate 90°"

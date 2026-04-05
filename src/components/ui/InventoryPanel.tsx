@@ -102,7 +102,7 @@ export function InventoryPanel() {
   };
 
   return (
-    <div className="flex flex-col items-end pointer-events-auto">
+    <div className="fixed left-5 flex flex-col items-end pointer-events-auto">
       <button 
         onClick={() => setIsOpen(!isOpen)}
         className="mb-2 backdrop-blur-md bg-white/10 border border-white/20 rounded-full p-2 shadow-xl hover:bg-white/20 transition-colors"
